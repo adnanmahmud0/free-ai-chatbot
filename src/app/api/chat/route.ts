@@ -17,17 +17,26 @@ export async function POST(req: NextRequest) {
       
       // Update title if it's the first user message and title is default
       if (chat.title === 'New Chat' && newUserMessage) {
-        chat.title = newUserMessage.text.substring(0, 30) + (newUserMessage.text.length > 30 ? '...' : '');
+        chat.title = newUserMessage.content.substring(0, 30) + (newUserMessage.content.length > 30 ? '...' : '');
       }
       
       if (newUserMessage) {
         chat.messages.push({
           role: 'user',
-          content: newUserMessage.text,
+          content: newUserMessage.content,
           meta: newUserMessage.meta
         });
         await chat.save();
       }
+    }
+    let openRouterMessages = messages;
+
+    if (chat) {
+      // Use the database as the source of truth for memory
+      openRouterMessages = chat.messages.map((m: any) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.content
+      }));
     }
 
     // Call OpenRouter
@@ -39,7 +48,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: process.env.MODEL || "openrouter/free",
-        messages: messages
+        messages: openRouterMessages
       })
     });
 
